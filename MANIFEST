@@ -1,0 +1,23 @@
+Build.PL
+Changes
+eg/eval_catch.pl
+eg/eval_catch2.pl
+eg/eval_throw.pl
+eg/eval_throw2.pl
+eg/exception_died.pl
+eg/try_catch_throw.pl
+eg/try_catch_throw2.pl
+lib/Exception/Died.pm
+Makefile.PL
+MANIFEST			This list of files
+MANIFEST.SKIP
+META.yml
+README
+t/all_tests.t
+t/benchmark_fail.pl
+t/benchmark_ok.pl
+t/cover.sh
+t/pod.t
+t/pod_coverage.t
+t/test.pl
+t/tlib/Exception/DiedTest.pm

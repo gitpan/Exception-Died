@@ -1,0 +1,49 @@
+NAME
+    Exception::Died - Convert simple die into real exception object
+
+SYNOPSIS
+      # Can be loaded via Exception::Base pragma
+      use Exception::Base,
+          'Exception::Died';
+
+      eval { open $f, "x", "bad_open_mode" };
+      Exception::Died->throw( message=>"cannot open" ) if $@;
+
+      eval { die "Bum!\n" };
+      if ($@) {
+        my $e = Exception::Died->catch;
+        $e->throw;
+      }
+
+      # Can replace die hook globally
+      use Exception::Died '%SIG';
+      eval { die "Boom!\n" };
+      print ref $@;           # "Exception::Died"
+      print $@->eval_error;   # "Boom!"
+
+      # Can be used in local scope only
+      {
+          local $SIG{__DIE__} = \&Exception::Died::__DIE__;
+          eval { die "Boom!"; }
+          print ref $@;           # "Exception::Died"
+          print $@->eval_error;   # "Boom!"
+      }
+      eval { die "Boom"; }
+      print ref $@;       # ""
+
+DESCRIPTION
+    This class extends standard Exception::Base and converts eval's error
+    into real exception object. The eval's error message is stored in
+    *eval_error* attribute.
+
+AUTHOR
+    Piotr Roszatycki <dexter@debian.org>
+
+LICENSE
+    Copyright (C) 2008 by Piotr Roszatycki <dexter@debian.org>.
+
+    This program is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+
+    See http://www.perl.com/perl/misc/Artistic.html
+
