@@ -1,6 +1,6 @@
 ---
 name: Exception-Died
-version: 0.0101
+version: 0.02
 author:
   - 'Piotr Roszatycki <dexter@debian.org>'
 abstract: Convert simple die into real exception object
@@ -15,7 +15,7 @@ build_requires:
 provides:
   Exception::Died:
     file: lib/Exception/Died.pm
-    version: 0.0101
+    version: 0.02
 generated_by: Module::Build version 0.2808
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html

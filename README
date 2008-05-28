@@ -16,7 +16,7 @@ SYNOPSIS
       }
 
       # Can replace die hook globally
-      use Exception::Died '%SIG';
+      use Exception::Died '%SIG' => 'die';
       eval { die "Boom!\n" };
       print ref $@;           # "Exception::Died"
       print $@->eval_error;   # "Boom!"

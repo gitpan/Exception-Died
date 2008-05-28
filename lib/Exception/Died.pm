@@ -2,7 +2,7 @@
 
 package Exception::Died;
 use 5.006;
-our $VERSION = 0.01_01;
+our $VERSION = 0.02;
 
 =head1 NAME
 
@@ -24,7 +24,7 @@ Exception::Died - Convert simple die into real exception object
   }
 
   # Can replace die hook globally
-  use Exception::Died '%SIG';
+  use Exception::Died '%SIG' => 'die';
   eval { die "Boom!\n" };
   print ref $@;           # "Exception::Died"
   print $@->eval_error;   # "Boom!"
@@ -64,6 +64,7 @@ use constant ATTRS => {
     default_attribute => { default => 'eval_error' },
     eval_attribute    => { default => 'eval_error' },
     eval_error        => { is => 'ro' },
+    eval_thrown       => { is => 'rw' },
 };
 
 
@@ -77,6 +78,9 @@ sub import {
     while (defined $_[0]) {
         my $name = shift @_;
         if ($name eq '%SIG') {
+            if (defined $_[0] and $_[0] eq 'die') {
+                shift @_;
+            }
             # Handle die hook
             $SIG{__DIE__} = \&__DIE__;
         }
@@ -100,7 +104,7 @@ sub import {
 }
 
 
-# Unexport try/catch
+# Reset %SIG
 sub unimport {
     my $pkg = shift;
     my $callpkg = caller;
@@ -116,6 +120,37 @@ sub unimport {
     }
 
     return 1;
+}
+
+
+# Rebless Exception::Died into another exception class
+sub catch {
+    my $self = shift;
+
+    my $class = ref $self ? ref $self : $self;
+
+    my $want_object;
+
+    my $return = $self->SUPER::catch(@_);
+
+    if (scalar @_ > 0) {
+        # Save object into argument
+        if (do { local $@; local $SIG{__DIE__}; eval { $_[0]->isa(__PACKAGE__) } } and ref $_[0] ne $class and $_[0]->{eval_thrown}) {
+            # Rebless if called as Exception::Died->catch()
+            bless $_[0] => $class;
+        }
+        $want_object = 0;
+    }
+    else {
+        # Otherwise: return from sub
+        if (do { local $@; local $SIG{__DIE__}; eval { $return->isa(__PACKAGE__) } } and ref $return ne $class and $return->{eval_thrown}) {
+            # Rebless if called as Exception::Died->catch()
+            bless $return => $class;
+        }
+        $want_object = 1;
+    }
+
+    return $want_object ? $return : defined $return;
 }
 
 
@@ -177,6 +212,7 @@ sub __DIE__ {
         $message =~ s/( at (?!.*\bat\b.*).* line \d+( thread \d+)?\.)?\n$//s;
         my $e = Exception::Died->new;
         $e->{eval_error} = $message;
+        $e->{eval_thrown} = 1;
         die $e;
     }
     # Otherwise: throw unchanged exception
@@ -214,6 +250,8 @@ L<Exception::Base>
 
 =item use Exception::Died '%SIG';
 
+=item use Exception::Died '%SIG' => 'die';
+
 Changes B<$SIG{__DIE__}> hook to B<Exception::Died::__DIE__>.
 
 =item no Exception::Died '%SIG';
@@ -234,11 +272,38 @@ descriptions.
 Contains the message which returns B<eval> block.  This attribute is
 automatically filled on object creation.
 
+=item eval_thrown (rw)
+
+Contains the flag for B<catch> method if it should rebless thrown
+exception based on simple die.  The flag is marked by internal
+B<__DIE__> hook.
+
 =back
 
 =head1 METHODS
 
 =over
+
+=item I<CLASS>-E<gt>catch([$I<variable>])
+
+This method overwrites the default B<catch> method.  It works as method
+from base class and has one exception in its behaviour.
+
+If the popped value is an B<Exception::Died> object and has an attribute
+B<eval_thrown> set, this object is reblessed to class I<CLASS> with its
+attributes unchanged.  It will mimic the behaviour of L<Exception::Base> if it
+was caught simple L<die|perlfunc>.
+
+  use Exception::Base 'Exception::Fatal' => { isa => 'Exception::Died' };
+  use Exception::Died '%SIG' => 'die';
+
+  eval { die "Died\n"; };
+  my $e = Exception::Fatal->catch;
+  print ref $e;   # "Exception::Fatal"
+
+  eval { Exception::Base->throw; };
+  my $e = Exception::Fatal->catch;
+  print ref $e;   # "Exception::Base"
 
 =item stringify([$I<verbosity>[, $I<message>]])
 

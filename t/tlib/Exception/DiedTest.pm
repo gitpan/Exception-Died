@@ -248,29 +248,64 @@ sub test_catch {
 
         # Simple die
         eval {
-            die 'Message1';
+            die 'Message3';
         };
         my $obj3 = Exception::Died->catch;
         $self->assert_not_null($obj3);
         $self->assert($obj3->isa("Exception::Died"), '$obj3->isa("Exception::Died")');
         $self->assert($obj3->isa("Exception::Base"), '$obj3->isa("Exception::Base")');
-        $self->assert_equals("Message1\n", $obj3->stringify(1));
-        $self->assert_equals('Message1', $obj3->{eval_error});
+        $self->assert_equals("Message3\n", $obj3->stringify(1));
+        $self->assert_equals('Message3', $obj3->{eval_error});
         $self->assert_equals(__PACKAGE__ . '::test_catch', $obj3->{caller_stack}->[3]->[3]);
         $self->assert(ref $self, ref $obj3->{caller_stack}->[3]->[8]);
 
         # Exception
         eval {
-            Exception::Died->throw(message=>'Message2');
+            Exception::Died->throw(message=>'Message4');
         };
         my $obj4 = Exception::Died->catch;
         $self->assert_not_null($obj4);
         $self->assert($obj4->isa("Exception::Died"), '$obj4->isa("Exception::Died")');
         $self->assert($obj4->isa("Exception::Base"), '$obj4->isa("Exception::Base")');
-        $self->assert_equals("Message2\n", $obj4->stringify(1));
+        $self->assert_equals("Message4\n", $obj4->stringify(1));
         $self->assert_equals('', $obj4->{eval_error});
         $self->assert_equals(__PACKAGE__ . '::test_catch', $obj4->{caller_stack}->[3]->[3]);
         $self->assert_equals(ref $self, ref $obj4->{caller_stack}->[3]->[8]);
+
+        # Derived class exception
+        eval q{
+            package Exception::DiedTest::catch::Exception1;
+            use base 'Exception::Died';
+        };
+        $self->assert_equals('', $@);
+
+        # Simple die with reblessing class
+        eval {
+            die 'Message5';
+        };
+        my $obj5 = Exception::DiedTest::catch::Exception1->catch;
+        $self->assert_not_null($obj5);
+        $self->assert($obj5->isa("Exception::DiedTest::catch::Exception1"), '$obj5->isa("Exception::DiedTest::catch::Exception1")');
+        $self->assert($obj5->isa("Exception::Died"), '$obj5->isa("Exception::Died")');
+        $self->assert($obj5->isa("Exception::Base"), '$obj5->isa("Exception::Base")');
+        $self->assert_equals("Message5\n", $obj5->stringify(1));
+        $self->assert_equals('Message5', $obj5->{eval_error});
+        $self->assert_equals(__PACKAGE__ . '::test_catch', $obj5->{caller_stack}->[3]->[3]);
+        $self->assert(ref $self, ref $obj5->{caller_stack}->[3]->[8]);
+
+        # Throw without reblessing class
+        eval {
+            Exception::Died->throw(message=>'Message6');
+        };
+        my $obj6 = Exception::DiedTest::catch::Exception1->catch;
+        $self->assert_not_null($obj6);
+        $self->assert(!$obj6->isa("Exception::DiedTest::catch::Exception1"), '!$obj6->isa("Exception::DiedTest::catch::Exception1")');
+        $self->assert($obj6->isa("Exception::Died"), '$obj6->isa("Exception::Died")');
+        $self->assert($obj6->isa("Exception::Base"), '$obj6->isa("Exception::Base")');
+        $self->assert_equals("Message6\n", $obj6->stringify(1));
+        $self->assert_equals('Message6', $obj6->{message});
+        $self->assert_equals(__PACKAGE__ . '::test_catch', $obj6->{caller_stack}->[3]->[3]);
+        $self->assert(ref $self, ref $obj6->{caller_stack}->[3]->[8]);
     };
     die "$@" if $@;
 }
@@ -286,6 +321,12 @@ sub test_import_keywords {
         $self->assert_equals('CODE', ref $SIG{__DIE__});
 
         eval 'Exception::Died->unimport(qw<%SIG>);';
+        $self->assert_equals('', ref $SIG{__DIE__});
+
+        eval 'Exception::Died->import(qw<%SIG die>);';
+        $self->assert_equals('CODE', ref $SIG{__DIE__});
+
+        eval 'Exception::Died->unimport(qw<%SIG die>);';
         $self->assert_equals('', ref $SIG{__DIE__});
 
         eval 'Exception::Died->import(qw<Exception::Died::test::Import1>);';

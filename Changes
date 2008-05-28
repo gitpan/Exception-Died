@@ -1,4 +1,12 @@
 ------------------------------------------------------------------------
+0.02 | Piotr Roszatycki <dexter@debian.org> | 2008-05-28
+
+* New overwritten method "catch".  It rebless the exception object if it is
+  thrown with __DIE__ hook.
+* Optional syntax: use Exception::Base '%SIG' => 'die';
+* New attribute "eval_thrown".
+
+------------------------------------------------------------------------
 0.0101 | Piotr Roszatycki <dexter@debian.org> | 2008-05-09
 
 * Build requires Test::Unit::Lite >= 0.07.
