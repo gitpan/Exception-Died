@@ -2,7 +2,7 @@
 
 package Exception::Died;
 use 5.006;
-our $VERSION = 0.02;
+our $VERSION = 0.02_01;
 
 =head1 NAME
 
@@ -11,8 +11,7 @@ Exception::Died - Convert simple die into real exception object
 =head1 SYNOPSIS
 
   # Can be loaded via Exception::Base pragma
-  use Exception::Base,
-      'Exception::Died';
+  use Exception::Base 'Exception::Died';
 
   eval { open $f, "x", "bad_open_mode" };
   Exception::Died->throw( message=>"cannot open" ) if $@;
@@ -30,6 +29,7 @@ Exception::Died - Convert simple die into real exception object
   print $@->eval_error;   # "Boom!"
 
   # Can be used in local scope only
+  use Exception::Died;
   {
       local $SIG{__DIE__} = \&Exception::Died::__DIE__;
       eval { die "Boom!"; }
@@ -260,6 +260,18 @@ Undefines B<$SIG{__DIE__}> hook.
 
 =back
 
+=head1 CONSTANTS
+
+=over
+
+=item ATTRS
+
+Declaration of class attributes as reference to hash.
+
+See L<Exception::Base> for details.
+
+=back
+
 =head1 ATTRIBUTES
 
 This class provides new attributes.  See L<Exception::Base> for other
@@ -294,16 +306,17 @@ B<eval_thrown> set, this object is reblessed to class I<CLASS> with its
 attributes unchanged.  It will mimic the behaviour of L<Exception::Base> if it
 was caught simple L<die|perlfunc>.
 
-  use Exception::Base 'Exception::Fatal' => { isa => 'Exception::Died' };
+  use Exception::Base 'Exception::Fatal' => { isa => 'Exception::Died' },
+                      'Exception::Simple' => { isa => 'Exception::Died' };
   use Exception::Died '%SIG' => 'die';
 
   eval { die "Died\n"; };
   my $e = Exception::Fatal->catch;
   print ref $e;   # "Exception::Fatal"
 
-  eval { Exception::Base->throw; };
+  eval { Exception::Simple->throw; };
   my $e = Exception::Fatal->catch;
-  print ref $e;   # "Exception::Base"
+  print ref $e;   # "Exception::Simple"
 
 =item stringify([$I<verbosity>[, $I<message>]])
 
