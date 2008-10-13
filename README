@@ -36,118 +36,6 @@ DESCRIPTION
     into real exception object. The eval's error message is stored in
     *eval_error* attribute.
 
-BASE CLASSES
-    *   Exception::Base
-
-IMPORTS
-    use Exception::Died '%SIG';
-    use Exception::Died '%SIG' => 'die';
-        Changes $SIG{__DIE__} hook to Exception::Died::__DIE__.
-
-    no Exception::Died '%SIG';
-        Undefines $SIG{__DIE__} hook.
-
-CONSTANTS
-    ATTRS
-        Declaration of class attributes as reference to hash.
-
-        See Exception::Base for details.
-
-ATTRIBUTES
-    This class provides new attributes. See Exception::Base for other
-    descriptions.
-
-    eval_error (ro)
-        Contains the message which returns eval block. This attribute is
-        automatically filled on object creation.
-
-    eval_thrown (rw)
-        Contains the flag for catch method if it should rebless thrown
-        exception based on simple die. The flag is marked by internal
-        __DIE__ hook.
-
-METHODS
-    *CLASS*->catch([$*variable*])
-        This method overwrites the default catch method. It works as method
-        from base class and has one exception in its behaviour.
-
-        If the popped value is an Exception::Died object and has an
-        attribute eval_thrown set, this object is reblessed to class *CLASS*
-        with its attributes unchanged. It will mimic the behaviour of
-        Exception::Base if it was caught simple die.
-
-          use Exception::Base 'Exception::Fatal' => { isa => 'Exception::Died' },
-                              'Exception::Simple' => { isa => 'Exception::Died' };
-          use Exception::Died '%SIG' => 'die';
-
-          eval { die "Died\n"; };
-          my $e = Exception::Fatal->catch;
-          print ref $e;   # "Exception::Fatal"
-
-          eval { Exception::Simple->throw; };
-          my $e = Exception::Fatal->catch;
-          print ref $e;   # "Exception::Simple"
-
-    stringify([$*verbosity*[, $*message*]])
-        Returns the string representation of exception object. It is called
-        automatically if the exception object is used in scalar context. The
-        method can be used explicity and then the verbosity level can be
-        used.
-
-        The format of output is "*message*: *eval_error*".
-
-PRIVATE METHODS
-    _collect_system_data
-        Collect system data and fill the attributes of exception object.
-        This method is called automatically if exception if throwed.
-
-        See Exception::Base.
-
-PRIVATE FUNCTIONS
-    __DIE__
-        This is a hook function for $SIG{__DIE__}. This hook can be enabled
-        with pragma:
-
-          use Exception::Died '%SIG';
-
-        or manually, i.e. for local scope:
-
-          local $SIG{__DIE__} = \&Exception::Died::__DIE__;
-
-PERFORMANCE
-    The Exception::Died module can change $SIG{__DIE__} hook. It costs a
-    speed for simple die operation. The failure scenario was benchmarked
-    with default setting and with changed $SIG{__DIE__} hook.
-
-      -----------------------------------------------------------------------
-      | Module                              | Without %SIG  | With %SIG     |
-      -----------------------------------------------------------------------
-      | eval/die string                     |      237975/s |        3069/s |
-      -----------------------------------------------------------------------
-      | eval/die object                     |      124853/s |       90575/s |
-      -----------------------------------------------------------------------
-      | Exception::Base eval/if             |        8356/s |        7984/s |
-      -----------------------------------------------------------------------
-      | Exception::Base try/catch           |        9218/s |        8891/s |
-      -----------------------------------------------------------------------
-      | Exception::Base eval/if verbosity=1 |       14899/s |       14300/s |
-      -----------------------------------------------------------------------
-      | Exception::Base try/catch verbos.=1 |       18232/s |       16992/s |
-      -----------------------------------------------------------------------
-
-    It means that Exception::Died with die hook makes simple die 30 times
-    slower. However it has no significant difference if the exception
-    objects are used.
-
-    Note that Exception::Died will slow other exception implementations,
-    like Class::Throwable and Exception::Class.
-
-SEE ALSO
-    Exception::Base.
-
-BUGS
-    If you find the bug, please report it.
-
 AUTHOR
     Piotr Roszatycki <dexter@debian.org>
 
@@ -157,5 +45,5 @@ LICENSE
     This program is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.
 
-    See <http://www.perl.com/perl/misc/Artistic.html>
+    See http://www.perl.com/perl/misc/Artistic.html
 

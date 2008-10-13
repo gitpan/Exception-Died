@@ -1,4 +1,17 @@
 ------------------------------------------------------------------------
+0.03 | Piotr Roszatycki <dexter@debian.org> | 2008-10-13
+
+Changes:
+
+* Do not recurse on Exception::Died and Exception::Warning.
+
+* Adaptated to new Exception::Base.
+
+* Renamed "eval_thrown" attribute to "sig_die_handled".
+
+* Requires Exception::Base >= 0.19.
+
+------------------------------------------------------------------------
 0.0201 | Piotr Roszatycki <dexter@debian.org> | 2008-05-29
 
 Changes:

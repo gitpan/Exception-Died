@@ -2,7 +2,7 @@
 
 package Exception::Died;
 use 5.006;
-our $VERSION = 0.02_01;
+our $VERSION = 0.03;
 
 =head1 NAME
 
@@ -54,17 +54,19 @@ use strict;
 use warnings;
 
 
-# Base class
+# Extend Exception::Base class
+use Exception::Base 0.19;
 use base 'Exception::Base';
 
 
 # List of class fields (name => {is=>ro|rw, default=>value})
 use constant ATTRS => {
     %{ Exception::Base->ATTRS },     # SUPER::ATTRS
+    stringify_attributes => { default => [ 'message', 'eval_error' ] },
     default_attribute => { default => 'eval_error' },
     eval_attribute    => { default => 'eval_error' },
+    catch_can_rebless => { is => 'ro' },
     eval_error        => { is => 'ro' },
-    eval_thrown       => { is => 'rw' },
 };
 
 
@@ -135,16 +137,20 @@ sub catch {
 
     if (scalar @_ > 0) {
         # Save object into argument
-        if (do { local $@; local $SIG{__DIE__}; eval { $_[0]->isa(__PACKAGE__) } } and ref $_[0] ne $class and $_[0]->{eval_thrown}) {
-            # Rebless if called as Exception::Died->catch()
+        if (do { local $@; local $SIG{__DIE__}; eval { $_[0]->isa(__PACKAGE__) } }
+            and ref $_[0] ne $class and $_[0]->{catch_can_rebless})
+        {
+            # Rebless if called as Exception::DiedDerivedClass->catch()
             bless $_[0] => $class;
         }
         $want_object = 0;
     }
     else {
         # Otherwise: return from sub
-        if (do { local $@; local $SIG{__DIE__}; eval { $return->isa(__PACKAGE__) } } and ref $return ne $class and $return->{eval_thrown}) {
-            # Rebless if called as Exception::Died->catch()
+        if (do { local $@; local $SIG{__DIE__}; eval { $return->isa(__PACKAGE__) } }
+            and ref $return ne $class and $return->{catch_can_rebless})
+        {
+            # Rebless if called as Exception::DiedDerivedClass->catch()
             bless $return => $class;
         }
         $want_object = 1;
@@ -171,48 +177,20 @@ sub _collect_system_data {
 }
 
 
-# Convert an exception to string
-sub stringify {
-    my ($self, $verbosity, $message) = @_;
-
-    $verbosity = defined $self->{verbosity}
-               ? $self->{verbosity}
-               : $self->{defaults}->{verbosity}
-        if not defined $verbosity;
-
-    # The argument overrides the field
-    $message = $self->{message} unless defined $message;
-
-    my $is_message = defined $message && $message ne '';
-    my $is_eval_error = $self->{eval_error};
-    if ($is_message or $is_eval_error) {
-        $message = ($is_message ? $message : '')
-                 . ($is_message && $is_eval_error ? ': ' : '')
-                 . ($is_eval_error ? $self->{eval_error} : '');
-    }
-    else {
-        $message = $self->{defaults}->{message};
-    }
-    return $self->SUPER::stringify($verbosity, $message);
-}
-
-
-# Stringify for overloaded operator. The same as SUPER but Perl needs it here.
-sub __stringify {
-    return $_[0]->stringify;
-}
-
-
 # Die hook
 sub __DIE__ {
     if (not ref $_[0]) {
+        # Do not recurse on Exception::Died & Exception::Warning
+        die $_[0] if $_[0] =~ /^Exception::(Died|Warning): /;
+
         # Simple die: recover eval error
         my $message = $_[0];
         while ($message =~ s/\t\.\.\.propagated at (?!.*\bat\b.*).* line \d+( thread \d+)?\.\n$//s) { }
         $message =~ s/( at (?!.*\bat\b.*).* line \d+( thread \d+)?\.)?\n$//s;
-        my $e = Exception::Died->new;
+
+        my $e = __PACKAGE__->new;
         $e->{eval_error} = $message;
-        $e->{eval_thrown} = 1;
+        $e->{catch_can_rebless} = 1;
         die $e;
     }
     # Otherwise: throw unchanged exception
@@ -233,6 +211,29 @@ __init;
 
 
 __END__
+
+=begin umlwiki
+
+= Class Diagram =
+
+[                          <<exception>>
+                          Exception::Died
+ -----------------------------------------------------------------
+ +catch_can_rebless : Bool                                   {new}
+ +eval_error : Str
+ #default_attribute : Str = "eval_error"
+ #eval_attribute : Str = "eval_error"
+ #stringify_attributes : ArrayRef[Str] = ["message", "eval_error"]
+ -----------------------------------------------------------------
+ +catch( out variable : Exception::Base ) : Bool          {export}
+ +catch() : Exception::Base                               {export}
+ #_collect_system_data()
+ <<utility>> -__DIE__()
+ <<constant>> +ATTRS() : HashRef                                  ]
+
+[Exception::Died] ---|> [Exception::Base]
+
+=end umlwiki
 
 =head1 BASE CLASSES
 
@@ -281,14 +282,36 @@ descriptions.
 
 =item eval_error (ro)
 
-Contains the message which returns B<eval> block.  This attribute is
+Contains the message from failed B<eval> block.  This attribute is
 automatically filled on object creation.
 
-=item eval_thrown (rw)
+  use Exception::Died '%SIG';
+  eval { die "string" };
+  print $@->eval_error;  # "string"
 
-Contains the flag for B<catch> method if it should rebless thrown
-exception based on simple die.  The flag is marked by internal
-B<__DIE__> hook.
+=item catch_can_rebless (rw)
+
+Contains the flag for B<catch> method which marks that this exception
+object should be reblessed.  The flag is marked by internal B<__DIE__>
+hook.
+
+=item eval_attribute (default: 'eval_error')
+
+Meta-attribute contains the name of the attribute which is filled if
+error stack is empty.  This attribute will contain value of B<$@>
+variable.  This class overrides the default value from
+L<Exception::Base> class.
+
+=item stringify_attributes (default: ['message', 'eval_error'])
+
+Meta-attribute contains the format of string representation of exception
+object.  This class overrides the default value from L<Exception::Base>
+class.
+
+=item default_attribute (default: 'eval_error')
+
+Meta-attribute contains the name of the default attribute.  This class
+overrides the default value from L<Exception::Base> class.
 
 =back
 
@@ -302,9 +325,10 @@ This method overwrites the default B<catch> method.  It works as method
 from base class and has one exception in its behaviour.
 
 If the popped value is an B<Exception::Died> object and has an attribute
-B<eval_thrown> set, this object is reblessed to class I<CLASS> with its
-attributes unchanged.  It will mimic the behaviour of L<Exception::Base> if it
-was caught simple L<die|perlfunc>.
+B<catch_can_rebless> set, this object is reblessed to class I<CLASS> with its
+attributes unchanged.  It is because original L<Exception::Base>-E<gt>B<catch>
+method doesn't change exception class but it should be changed if
+B<Exception::Died> handles B<$SIG{__DIE__}> hook.
 
   use Exception::Base 'Exception::Fatal' => { isa => 'Exception::Died' },
                       'Exception::Simple' => { isa => 'Exception::Died' };
@@ -318,13 +342,6 @@ was caught simple L<die|perlfunc>.
   my $e = Exception::Fatal->catch;
   print ref $e;   # "Exception::Simple"
 
-=item stringify([$I<verbosity>[, $I<message>]])
-
-Returns the string representation of exception object.  It is called
-automatically if the exception object is used in scalar context.  The method
-can be used explicity and then the verbosity level can be used.
-
-The format of output is "I<message>: I<eval_error>".
 
 =back
 
@@ -334,8 +351,9 @@ The format of output is "I<message>: I<eval_error>".
 
 =item _collect_system_data
 
-Collect system data and fill the attributes of exception object.  This method
-is called automatically if exception if throwed.
+Collect system data and fill the attributes of exception object.  This
+method is called automatically if exception if throwed.  This class
+overrides the method from L<Exception::Base> class.
 
 See L<Exception::Base>.
 

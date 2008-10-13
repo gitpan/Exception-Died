@@ -12,12 +12,12 @@ my $build = Module::Build->new(
     license => 'perl',
     requires => {
         'perl'               => 5.006,
-        'Exception::Base'    => 0.16,
+        'Exception::Base'    => 0.19,
     },
     optional => {
     },
     build_requires => {
-	'Test::Unit::Lite'   => 0.07,
+	'Test::Unit::Lite'   => 0.10,
     },
     create_makefile_pl => 'traditional',
     create_readme => 1,
