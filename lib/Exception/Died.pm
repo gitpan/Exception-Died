@@ -2,7 +2,7 @@
 
 package Exception::Died;
 use 5.006;
-our $VERSION = 0.03;
+our $VERSION = 0.04;
 
 =head1 NAME
 
@@ -55,26 +55,19 @@ use warnings;
 
 
 # Extend Exception::Base class
-use Exception::Base 0.19;
-use base 'Exception::Base';
-
-
-# List of class fields (name => {is=>ro|rw, default=>value})
-use constant ATTRS => {
-    %{ Exception::Base->ATTRS },     # SUPER::ATTRS
-    stringify_attributes => { default => [ 'message', 'eval_error' ] },
-    default_attribute => { default => 'eval_error' },
-    eval_attribute    => { default => 'eval_error' },
-    catch_can_rebless => { is => 'ro' },
-    eval_error        => { is => 'ro' },
-};
+use Exception::Base 0.20
+    'Exception::Died' => {
+        has       => { ro => [ 'catch_can_rebless', 'eval_error' ] },
+        string_attributes => [ 'message', 'eval_error' ],
+        default_attribute => 'eval_error',
+        eval_attribute    => 'eval_error',
+    };
 
 
 # Handle %SIG tag
 sub import {
     my $pkg = shift;
 
-    my @export;
     my @params;
 
     while (defined $_[0]) {
@@ -90,20 +83,15 @@ sub import {
             # Other parameters goes to SUPER::import
             push @params, $name;
             push @params, shift @_ if defined $_[0] and ref $_[0] eq 'HASH';
-        }
-    }
-
-    if (@export) {
-        my $callpkg = caller;
-        Exporter::export($pkg, $callpkg, @export);
-    }
+        };
+    };
 
     if (@params) {
         return $pkg->SUPER::import(@params);
-    }
+    };
 
     return 1;
-}
+};
 
 
 # Reset %SIG
@@ -111,18 +99,15 @@ sub unimport {
     my $pkg = shift;
     my $callpkg = caller;
 
-    # Unexport all by default
-    my @export = scalar @_ ? @_ : ':all';
-
-    while (my $name = shift @export) {
+    while (my $name = shift @_) {
         if ($name eq '%SIG') {
             # Undef die hook
             $SIG{__DIE__} = '';
-        }
-    }
+        };
+    };
 
     return 1;
-}
+};
 
 
 # Rebless Exception::Died into another exception class
@@ -131,33 +116,17 @@ sub catch {
 
     my $class = ref $self ? ref $self : $self;
 
-    my $want_object;
+    my $e = $self->SUPER::catch(@_);
 
-    my $return = $self->SUPER::catch(@_);
+    # Rebless if called as Exception::DiedDerivedClass->catch()
+    if (do { local $@; local $SIG{__DIE__}; eval { $e->isa(__PACKAGE__) } }
+        and ref $e ne $class and $e->{catch_can_rebless})
+    {
+        bless $e => $class;
+    };
 
-    if (scalar @_ > 0) {
-        # Save object into argument
-        if (do { local $@; local $SIG{__DIE__}; eval { $_[0]->isa(__PACKAGE__) } }
-            and ref $_[0] ne $class and $_[0]->{catch_can_rebless})
-        {
-            # Rebless if called as Exception::DiedDerivedClass->catch()
-            bless $_[0] => $class;
-        }
-        $want_object = 0;
-    }
-    else {
-        # Otherwise: return from sub
-        if (do { local $@; local $SIG{__DIE__}; eval { $return->isa(__PACKAGE__) } }
-            and ref $return ne $class and $return->{catch_can_rebless})
-        {
-            # Rebless if called as Exception::DiedDerivedClass->catch()
-            bless $return => $class;
-        }
-        $want_object = 1;
-    }
-
-    return $want_object ? $return : defined $return;
-}
+    return $e;
+};
 
 
 # Collect system data
@@ -171,10 +140,10 @@ sub _collect_system_data {
     }
     else {
         $self->{eval_error} = undef;
-    }
+    };
 
     return $self->SUPER::_collect_system_data(@_);
-}
+};
 
 
 # Die hook
@@ -185,26 +154,17 @@ sub __DIE__ {
 
         # Simple die: recover eval error
         my $message = $_[0];
-        while ($message =~ s/\t\.\.\.propagated at (?!.*\bat\b.*).* line \d+( thread \d+)?\.\n$//s) { }
+        while ($message =~ s/\t\.\.\.propagated at (?!.*\bat\b.*).* line \d+( thread \d+)?\.\n$//s) { };
         $message =~ s/( at (?!.*\bat\b.*).* line \d+( thread \d+)?\.)?\n$//s;
 
         my $e = __PACKAGE__->new;
         $e->{eval_error} = $message;
         $e->{catch_can_rebless} = 1;
         die $e;
-    }
+    };
     # Otherwise: throw unchanged exception
     die $_[0];
-}
-
-
-# Module initialization
-sub __init {
-    __PACKAGE__->_make_accessors;
-}
-
-
-__init;
+};
 
 
 1;
@@ -223,7 +183,7 @@ __END__
  +eval_error : Str
  #default_attribute : Str = "eval_error"
  #eval_attribute : Str = "eval_error"
- #stringify_attributes : ArrayRef[Str] = ["message", "eval_error"]
+ #string_attributes : ArrayRef[Str] = ["message", "eval_error"]
  -----------------------------------------------------------------
  +catch( out variable : Exception::Base ) : Bool          {export}
  +catch() : Exception::Base                               {export}
@@ -253,11 +213,11 @@ L<Exception::Base>
 
 =item use Exception::Died '%SIG' => 'die';
 
-Changes B<$SIG{__DIE__}> hook to B<Exception::Died::__DIE__>.
+Changes C<$SIG{__DIE__}> hook to C<Exception::Died::__DIE__>.
 
 =item no Exception::Died '%SIG';
 
-Undefines B<$SIG{__DIE__}> hook.
+Undefines C<$SIG{__DIE__}> hook.
 
 =back
 
@@ -282,7 +242,7 @@ descriptions.
 
 =item eval_error (ro)
 
-Contains the message from failed B<eval> block.  This attribute is
+Contains the message from failed C<eval> block.  This attribute is
 automatically filled on object creation.
 
   use Exception::Died '%SIG';
@@ -291,14 +251,14 @@ automatically filled on object creation.
 
 =item catch_can_rebless (rw)
 
-Contains the flag for B<catch> method which marks that this exception
-object should be reblessed.  The flag is marked by internal B<__DIE__>
+Contains the flag for C<catch> method which marks that this exception
+object should be reblessed.  The flag is marked by internal C<__DIE__>
 hook.
 
 =item eval_attribute (default: 'eval_error')
 
 Meta-attribute contains the name of the attribute which is filled if
-error stack is empty.  This attribute will contain value of B<$@>
+error stack is empty.  This attribute will contain value of C<$@>
 variable.  This class overrides the default value from
 L<Exception::Base> class.
 
@@ -319,19 +279,20 @@ overrides the default value from L<Exception::Base> class.
 
 =over
 
-=item I<CLASS>-E<gt>catch([$I<variable>])
+=item C<CLASS>-E<gt>catch
 
-This method overwrites the default B<catch> method.  It works as method
+This method overwrites the default C<catch> method.  It works as method
 from base class and has one exception in its behaviour.
 
-If the popped value is an B<Exception::Died> object and has an attribute
-B<catch_can_rebless> set, this object is reblessed to class I<CLASS> with its
-attributes unchanged.  It is because original L<Exception::Base>-E<gt>B<catch>
+If the popped value is an C<Exception::Died> object and has an attribute
+C<catch_can_rebless> set, this object is reblessed to class I<CLASS> with its
+attributes unchanged.  It is because original L<Exception::Base>-E<gt>C<catch>
 method doesn't change exception class but it should be changed if
-B<Exception::Died> handles B<$SIG{__DIE__}> hook.
+C<Exception::Died> handles C<$SIG{__DIE__}> hook.
 
-  use Exception::Base 'Exception::Fatal' => { isa => 'Exception::Died' },
-                      'Exception::Simple' => { isa => 'Exception::Died' };
+  use Exception::Base
+    'Exception::Fatal' => { isa => 'Exception::Died' },
+    'Exception::Simple' => { isa => 'Exception::Died' };
   use Exception::Died '%SIG' => 'die';
 
   eval { die "Died\n"; };
@@ -377,9 +338,9 @@ or manually, i.e. for local scope:
 
 =head1 PERFORMANCE
 
-The B<Exception::Died> module can change B<$SIG{__DIE__}> hook.  It
+The C<Exception::Died> module can change C<$SIG{__DIE__}> hook.  It
 costs a speed for simple die operation.  The failure scenario was
-benchmarked with default setting and with changed B<$SIG{__DIE__}> hook.
+benchmarked with default setting and with changed C<$SIG{__DIE__}> hook.
 
   -----------------------------------------------------------------------
   | Module                              | Without %SIG  | With %SIG     |
@@ -397,11 +358,11 @@ benchmarked with default setting and with changed B<$SIG{__DIE__}> hook.
   | Exception::Base try/catch verbos.=1 |       18232/s |       16992/s |
   -----------------------------------------------------------------------
 
-It means that B<Exception::Died> with die hook makes simple die 30 times
+It means that C<Exception::Died> with die hook makes simple die 30 times
 slower.  However it has no significant difference if the exception
 objects are used.
 
-Note that B<Exception::Died> will slow other exception implementations,
+Note that C<Exception::Died> will slow other exception implementations,
 like L<Class::Throwable> and L<Exception::Class>.
 
 =head1 SEE ALSO

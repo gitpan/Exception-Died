@@ -1,7 +1,6 @@
 #!/usr/bin/perl -I../lib
 
-use Exception::Base
-    'Exception::Died';
+use Exception::Base 'Exception::Died';
 
 eval { open $file, "x", "/badmodeexample" };
 warn "\$@ = $@";

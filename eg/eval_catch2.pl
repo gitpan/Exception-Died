@@ -1,6 +1,6 @@
 #!/usr/bin/perl -I../lib
 
-use Exception::Base ':all';
+use Exception::Base;
 use Exception::Died '%SIG';
 
 eval { open $file, "z", "/badmodeexample" };

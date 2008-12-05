@@ -80,7 +80,7 @@ sub test_collect_system_data {
     $self->assert_equals('Boom5', $obj5->{eval_error});
 }
 
-sub test_stringify {
+sub test_to_string {
     my $self = shift;
 
     my $obj = Exception::Died->new(message=>'Stringify');
@@ -88,28 +88,33 @@ sub test_stringify {
     $self->assert_not_null($obj);
     $self->assert($obj->isa("Exception::Died"), '$obj->isa("Exception::Died")');
     $self->assert($obj->isa("Exception::Base"), '$obj->isa("Exception::Base")');
-    $self->assert_equals('', $obj->stringify(0));
-    $self->assert_equals("Stringify\n", $obj->stringify(1));
-    $self->assert_matches(qr/Stringify at .* line \d+.\n/s, $obj->stringify(2));
-    $self->assert_matches(qr/Exception::Died: Stringify at .* line \d+\n/s, $obj->stringify(3));
-    $self->assert_equals("Message\n", $obj->stringify(1, "Message"));
-    $self->assert_equals("Unknown exception\n", $obj->stringify(1, ""));
+    $obj->{verbosity} = 0;
+    $self->assert_equals('', $obj->to_string);
+    $obj->{verbosity} = 1;
+    $self->assert_equals("Stringify\n", $obj->to_string);
+    $obj->{verbosity} = 2;
+    $self->assert_matches(qr/Stringify at .* line \d+.\n/s, $obj->to_string);
+    $obj->{verbosity} = 3;
+    $self->assert_matches(qr/Exception::Died: Stringify at .* line \d+\n/s, $obj->to_string);
 
     $obj->{eval_error} = 'Error';
-    $self->assert_equals('', $obj->stringify(0));
-    $self->assert_equals("Stringify: Error\n", $obj->stringify(1));
-    $self->assert_matches(qr/Stringify: Error at .* line \d+.\n/s, $obj->stringify(2));
-    $self->assert_matches(qr/Exception::Died: Stringify: Error at .* line \d+\n/s, $obj->stringify(3));
-    $self->assert_equals("Message\n", $obj->stringify(1, "Message"));
-    $self->assert_equals("Unknown exception\n", $obj->stringify(1, ""));
+    $obj->{verbosity} = 0;
+    $self->assert_equals('', $obj->to_string);
+    $obj->{verbosity} = 1;
+    $self->assert_equals("Stringify: Error\n", $obj->to_string);
+    $obj->{verbosity} = 2;
+    $self->assert_matches(qr/Stringify: Error at .* line \d+.\n/s, $obj->to_string);
+    $obj->{verbosity} = 3;
+    $self->assert_matches(qr/Exception::Died: Stringify: Error at .* line \d+\n/s, $obj->to_string);
 
+    $obj->{verbosity} = undef;
     $self->assert_equals(1, $obj->{defaults}->{verbosity} = 1);
     $self->assert_equals(1, $obj->{defaults}->{verbosity});
-    $self->assert_equals("Stringify: Error\n", $obj->stringify);
+    $self->assert_equals("Stringify: Error\n", $obj->to_string);
     $self->assert_not_null($obj->{defaults}->{verbosity});
     $obj->{defaults}->{verbosity} = Exception::Died->ATTRS->{verbosity}->{default};
     $self->assert_equals(1, $obj->{verbosity} = 1);
-    $self->assert_equals("Stringify: Error\n", $obj->stringify);
+    $self->assert_equals("Stringify: Error\n", $obj->to_string);
 
     $self->assert_equals("Stringify: Error\n", "$obj");
 }
@@ -125,7 +130,8 @@ sub test_throw {
     $self->assert_not_null($obj1);
     $self->assert($obj1->isa("Exception::Died"), '$obj1->isa("Exception::Died")');
     $self->assert($obj1->isa("Exception::Base"), '$obj1->isa("Exception::Base")');
-    $self->assert_equals("Die1\n", $obj1->stringify(1));
+    $obj1->{verbosity} = 1;
+    $self->assert_equals("Die1\n", $obj1->to_string);
     $self->assert_equals('Die1', $obj1->{eval_error});
 
     # Rethrow via object method
@@ -136,7 +142,8 @@ sub test_throw {
     $self->assert_not_null($obj2);
     $self->assert($obj2->isa("Exception::Died"), '$obj2->isa("Exception::Died")');
     $self->assert($obj2->isa("Exception::Base"), '$obj2->isa("Exception::Base")');
-    $self->assert_equals("Message2: Die1\n", $obj2->stringify(1));
+    $obj2->{verbosity} = 1;
+    $self->assert_equals("Message2: Die1\n", $obj2->to_string);
     $self->assert_equals('Die1', $obj2->{eval_error});
 
     # Rethrow via class method with object as argument
@@ -147,7 +154,8 @@ sub test_throw {
     $self->assert_not_null($obj3);
     $self->assert($obj3->isa("Exception::Died"), '$obj3->isa("Exception::Died")');
     $self->assert($obj3->isa("Exception::Base"), '$obj3->isa("Exception::Base")');
-    $self->assert_equals("Message3: Die1\n", $obj3->stringify(1));
+    $obj3->{verbosity} = 1;
+    $self->assert_equals("Message3: Die1\n", $obj3->to_string);
     $self->assert_equals('Die1', $obj3->{eval_error});
 
     # Rethrow via class method with string as argument
@@ -158,7 +166,8 @@ sub test_throw {
     $self->assert_not_null($obj4);
     $self->assert($obj4->isa("Exception::Died"), '$obj4->isa("Exception::Died")');
     $self->assert($obj4->isa("Exception::Base"), '$obj4->isa("Exception::Base")');
-    $self->assert_equals("Message4\n", $obj4->stringify(1));
+    $obj4->{verbosity} = 1;
+    $self->assert_equals("Message4\n", $obj4->to_string);
     $self->assert_equals('', $obj4->{eval_error});
 
     # Rethrow via class method with object as argument
@@ -170,7 +179,8 @@ sub test_throw {
     $self->assert_not_null($obj6);
     $self->assert($obj6->isa("Exception::Died"), '$obj6->isa("Exception::Died")');
     $self->assert($obj6->isa("Exception::Base"), '$obj6->isa("Exception::Base")');
-    $self->assert_equals("Message6\n", $obj6->stringify(1));
+    $obj5->{verbosity} = 1;
+    $self->assert_equals("Message6\n", $obj6->to_string);
     $self->assert_null($obj6->{eval_error});
 
     # Simple die with propagated message.
@@ -182,7 +192,8 @@ sub test_throw {
     $self->assert_not_null($obj7);
     $self->assert($obj7->isa("Exception::Died"), '$obj7->isa("Exception::Died")');
     $self->assert($obj7->isa("Exception::Base"), '$obj7->isa("Exception::Base")');
-    $self->assert_equals("Die7\n", $obj7->stringify(1));
+    $obj7->{verbosity} = 1;
+    $self->assert_equals("Die7\n", $obj7->to_string);
     $self->assert_equals('Die7', $obj7->{eval_error});
 
     # Simple die with propagated message.
@@ -197,37 +208,13 @@ sub test_throw {
     $self->assert_not_null($obj8);
     $self->assert($obj8->isa("Exception::Died"), '$obj8->isa("Exception::Died")');
     $self->assert($obj8->isa("Exception::Base"), '$obj8->isa("Exception::Base")');
-    $self->assert_equals("Die8\n", $obj8->stringify(1));
+    $obj8->{verbosity} = 1;
+    $self->assert_equals("Die8\n", $obj8->to_string);
     $self->assert_equals('Die8', $obj8->{eval_error});
 }
 
 sub test_catch {
     my $self = shift;
-
-    # Simple die
-    Exception::Base->try( eval {
-        die 'Message1';
-    } );
-    my $obj1 = Exception::Died->catch;
-    $self->assert_not_null($obj1);
-    $self->assert($obj1->isa("Exception::Died"), '$obj1->isa("Exception::Died")');
-    $self->assert($obj1->isa("Exception::Base"), '$obj1->isa("Exception::Base")');
-    $self->assert_equals("Message1\n", $obj1->stringify(1));
-    $self->assert_equals('Message1', $obj1->{eval_error});
-
-    # Exception
-    Exception::Base->try( eval {
-        Exception::Died->throw(message=>'Message2');
-    } );
-    my $obj2 = Exception::Died->catch;
-    $self->assert_not_null($obj2);
-    $self->assert($obj2->isa("Exception::Died"), '$obj2->isa("Exception::Died")');
-    $self->assert($obj2->isa("Exception::Base"), '$obj2->isa("Exception::Base")');
-    $self->assert_equals("Message2\n", $obj2->stringify(1));
-    $self->assert_equals('', $obj2->{eval_error});
-
-    # Pop all error stack
-    while (Exception::Base->catch) { 1; }
 
     # Simple die
     eval {
@@ -237,7 +224,8 @@ sub test_catch {
     $self->assert_not_null($obj3);
     $self->assert($obj3->isa("Exception::Died"), '$obj3->isa("Exception::Died")');
     $self->assert($obj3->isa("Exception::Base"), '$obj3->isa("Exception::Base")');
-    $self->assert_equals("Message3\n", $obj3->stringify(1));
+    $obj3->{verbosity} = 1;
+    $self->assert_equals("Message3\n", $obj3->to_string);
     $self->assert_equals('Message3', $obj3->{eval_error});
 
     # Exception
@@ -248,7 +236,8 @@ sub test_catch {
     $self->assert_not_null($obj4);
     $self->assert($obj4->isa("Exception::Died"), '$obj4->isa("Exception::Died")');
     $self->assert($obj4->isa("Exception::Base"), '$obj4->isa("Exception::Base")');
-    $self->assert_equals("Message4\n", $obj4->stringify(1));
+    $obj4->{verbosity} = 1;
+    $self->assert_equals("Message4\n", $obj4->to_string);
     $self->assert_equals('', $obj4->{eval_error});
 
     # Derived class exception
@@ -267,7 +256,8 @@ sub test_catch {
     $self->assert($obj5->isa("Exception::DiedTest::catch::Exception1"), '$obj5->isa("Exception::DiedTest::catch::Exception1")');
     $self->assert($obj5->isa("Exception::Died"), '$obj5->isa("Exception::Died")');
     $self->assert($obj5->isa("Exception::Base"), '$obj5->isa("Exception::Base")');
-    $self->assert_equals("Message5\n", $obj5->stringify(1));
+    $obj5->{verbosity} = 1;
+    $self->assert_equals("Message5\n", $obj5->to_string);
     $self->assert_equals('Message5', $obj5->{eval_error});
 
     # Throw without reblessing class
@@ -279,7 +269,8 @@ sub test_catch {
     $self->assert(!$obj6->isa("Exception::DiedTest::catch::Exception1"), '!$obj6->isa("Exception::DiedTest::catch::Exception1")');
     $self->assert($obj6->isa("Exception::Died"), '$obj6->isa("Exception::Died")');
     $self->assert($obj6->isa("Exception::Base"), '$obj6->isa("Exception::Base")');
-    $self->assert_equals("Message6\n", $obj6->stringify(1));
+    $obj6->{verbosity} = 1;
+    $self->assert_equals("Message6\n", $obj6->to_string);
     $self->assert_equals('Message6', $obj6->{message});
 }
 
