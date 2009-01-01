@@ -11,13 +11,16 @@ my $build = Module::Build->new(
     dist_author => 'Piotr Roszatycki <dexter@debian.org>',
     license => 'perl',
     requires => {
+        'constant::boolean'  => 0,
         'perl'               => 5.006,
-        'Exception::Base'    => 0.20,
+        'Exception::Base'    => 0.21,
     },
     optional => {
     },
     build_requires => {
-	'Test::Unit::Lite'   => 0.10,
+        'parent'             => 0,
+        'Test::Assert'       => 0.05,
+	'Test::Unit::Lite'   => 0.11,
     },
     create_makefile_pl => 'traditional',
     create_readme => 1,
@@ -25,6 +28,7 @@ my $build = Module::Build->new(
     add_to_cleanup => [
         'META.yml', '*.bak', '*.gz', '*.tgz', '*.ppd', '*.deb', '*.bat',
         'Makefile.PL', 'Makefile', 'pm_to_blib', 'README', 'cover_db',
+        'Debian_CPANTS.txt',
         'Exception-Died-*',
     ],
 );

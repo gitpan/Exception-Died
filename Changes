@@ -1,4 +1,16 @@
 ------------------------------------------------------------------------
+0.05 | Piotr Roszatycki <dexter@debian.org> | 2009-01-01
+
+Changes:
+
+* Handles Carp output correctly.
+* Method "_collect_system_data" recovers attribute "eval_error" from variable
+  "$@" if it is an Exception::Died object.
+* Attribute "eval_error" is undefined if eval error was an empty string.
+* Requires constant::boolean.
+* Build requires Test::Assert and parent.
+
+------------------------------------------------------------------------
 0.04 | Piotr Roszatycki <dexter@debian.org> | 2008-12-05
 
 Changes:

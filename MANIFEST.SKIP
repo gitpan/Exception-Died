@@ -39,4 +39,6 @@
 \.ppd$
 \.tgz$
 \.deb$
+\bDebian_CPANTS.txt$
+
 \bException-Died-

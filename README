@@ -2,9 +2,9 @@ NAME
     Exception::Died - Convert simple die into real exception object
 
 SYNOPSIS
-      # Can be loaded via Exception::Base pragma
-      use Exception::Base 'Exception::Died';
+      use Exception::Died;
 
+      use warnings FATAL => 'all';
       eval { open $f, "x", "bad_open_mode" };
       Exception::Died->throw( message=>"cannot open" ) if $@;
 
@@ -12,7 +12,7 @@ SYNOPSIS
       if ($@) {
         my $e = Exception::Died->catch;
         $e->throw;
-      }
+      };
 
       # Can replace die hook globally
       use Exception::Died '%SIG' => 'die';
@@ -23,24 +23,36 @@ SYNOPSIS
       # Can be used in local scope only
       use Exception::Died;
       {
-          local $SIG{__DIE__} = \&Exception::Died::__DIE__;
-          eval { die "Boom!"; }
+          local $SIG{__DIE__};
+          Exception::Fatal->import('%SIG');
+          eval { die "Boom!" };
           print ref $@;           # "Exception::Died"
           print $@->eval_error;   # "Boom!"
-      }
-      eval { die "Boom"; }
+      };
+      eval { die "Boom" };
       print ref $@;       # ""
+
+      # Debugging with increased verbosity
+      $ perl -MException::Died=%SIG,die,verbosity,3 script.pl
+
+      # Debugging one-liner script
+      $ perl -MException::Died=%SIG,die,verbosity,3 -ale '\
+      use File::Temp; $tmp = File::Temp->new( DIR => "/notfound" )'
 
 DESCRIPTION
     This class extends standard Exception::Base and converts eval's error
     into real exception object. The eval's error message is stored in
     *eval_error* attribute.
 
+    This class can be also used for debugging scripts with use simple
+    perlfunc or Carp. You can raise verbosity level and print stack trace if
+    script doesn't use Exception::Base and has stopped with perlfunc.
+
 AUTHOR
     Piotr Roszatycki <dexter@debian.org>
 
 LICENSE
-    Copyright (C) 2008 by Piotr Roszatycki <dexter@debian.org>.
+    Copyright (C) 2008, 2009 by Piotr Roszatycki <dexter@debian.org>.
 
     This program is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.

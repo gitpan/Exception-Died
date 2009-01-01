@@ -9,8 +9,11 @@ WriteMakefile
           'EXE_FILES' => [],
           'VERSION_FROM' => 'lib/Exception/Died.pm',
           'PREREQ_PM' => {
-                           'Test::Unit::Lite' => '0.1',
-                           'Exception::Base' => '0.2'
+                           'parent' => 0,
+                           'Test::Unit::Lite' => '0.11',
+                           'constant::boolean' => 0,
+                           'Test::Assert' => '0.05',
+                           'Exception::Base' => '0.21'
                          }
         )
 ;

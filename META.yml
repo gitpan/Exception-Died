@@ -1,6 +1,6 @@
 ---
 name: Exception-Died
-version: 0.04
+version: 0.05
 author:
   - 'Piotr Roszatycki <dexter@debian.org>'
 abstract: Convert simple die into real exception object
@@ -8,14 +8,17 @@ license: perl
 resources:
   license: http://dev.perl.org/licenses/
 requires:
-  Exception::Base: 0.2
+  Exception::Base: 0.21
+  constant::boolean: 0
   perl: 5.006
 build_requires:
-  Test::Unit::Lite: 0.1
+  Test::Assert: 0.05
+  Test::Unit::Lite: 0.11
+  parent: 0
 provides:
   Exception::Died:
     file: lib/Exception/Died.pm
-    version: 0.04
+    version: 0.05
 generated_by: Module::Build version 0.280801
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html
