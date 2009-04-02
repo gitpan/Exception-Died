@@ -1,8 +1,10 @@
-#!/usr/bin/perl -I../lib
+#!/usr/bin/perl
+
+use lib 'lib', '../lib';
 
 use Exception::Base 'Exception::Died';
 
-eval { open $file, "z", "/badmodeexample" };
+eval { open my $file, "z", "/badmodeexample" };
 warn 'ref $@ = ', ref $@;
 warn '$@ = ', $@;
 if ($@) {

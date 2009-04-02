@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 
 use strict;
 use warnings;
@@ -19,7 +19,7 @@ Readonly my $LOCALTIME_YEAR_OFFSET       => 1900;
 my $this_year =
     (localtime)[$LOCALTIME_YEAR_FIELD_NUMBER] + $LOCALTIME_YEAR_OFFSET;
 my $copyrights_found = 0;
-find({wanted => \&check_file, no_chdir => 1}, 'blib');
+find({wanted => \&check_file, no_chdir => 1}, 'lib');
 foreach ( grep { m/^readme/ixms } read_dir(q<.>) ) {
     check_file();
 } # end foreach
@@ -67,7 +67,7 @@ sub check_file {
     my @copyright_years = $content =~ m<
                                        (?: copyright(?:\s\(c\))? | \(c\) )
                                        \s*
-                                       (?: \d{4} \\? [-,]\s*)?
+                                       (?: \d{4} \\? [-,]\s*)*
                                        (\d{4})
                                        >gixms;
     if (0 < grep {$_ ne $this_year} @copyright_years) {

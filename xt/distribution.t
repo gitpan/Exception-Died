@@ -1,9 +1,12 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 
 use strict;
 use warnings;
 
 our $VERSION = '0.999_001';
 
-# No POD coverage due to complaints about builtins when using Fatal.
-use Test::Distribution ( distversion => 1, not => 'podcover' );
+require Test::Distribution;
+Test::Distribution->import(
+    distversion => 1,
+    only => [ 'description', 'manifest' ]
+);

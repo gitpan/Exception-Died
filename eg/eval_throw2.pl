@@ -1,8 +1,10 @@
-#!/usr/bin/perl -I../lib
+#!/usr/bin/perl
+
+use lib 'lib', '../lib';
 
 use Exception::Base;
 use Exception::Died '%SIG';
 
-eval { open $file, "x", "/badmodeexample" };
+eval { open my $file, "x", "/badmodeexample" };
 warn "\$@ = $@";
 Exception::Died->throw( $@, message=>"cannot open" ) if $@;

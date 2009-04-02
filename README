@@ -33,10 +33,10 @@ SYNOPSIS
       print ref $@;       # ""
 
       # Debugging with increased verbosity
-      $ perl -MException::Died=%SIG,die,verbosity,3 script.pl
+      $ perl -MException::Died=:debug script.pl
 
       # Debugging one-liner script
-      $ perl -MException::Died=%SIG,die,verbosity,3 -ale '\
+      $ perl -MException::Died=:debug -ale '\
       use File::Temp; $tmp = File::Temp->new( DIR => "/notfound" )'
 
 DESCRIPTION
@@ -49,10 +49,10 @@ DESCRIPTION
     script doesn't use Exception::Base and has stopped with perlfunc.
 
 AUTHOR
-    Piotr Roszatycki <dexter@debian.org>
+    Piotr Roszatycki <dexter@cpan.org>
 
 LICENSE
-    Copyright (C) 2008, 2009 by Piotr Roszatycki <dexter@debian.org>.
+    Copyright (c) 2008, 2009 by Piotr Roszatycki <dexter@cpan.org>.
 
     This program is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.

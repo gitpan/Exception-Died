@@ -3,6 +3,7 @@ package Exception::DiedTest;
 use strict;
 use warnings;
 
+use Test::Unit::Lite;
 use parent 'Test::Unit::TestCase';
 use Test::Assert ':all';
 
@@ -312,8 +313,6 @@ sub test_import_keywords {
     assert_raises( qr/can only be created with/, sub {
         Exception::Died->import('Exception::Died::test::Import1' => '%SIG');
     } );
-
-    assert_equals('CODE', ref $SIG{__DIE__});
 };
 
 1;

@@ -39,10 +39,10 @@ Exception::Died - Convert simple die into real exception object
   print ref $@;       # ""
 
   # Debugging with increased verbosity
-  $ perl -MException::Died=%SIG,die,verbosity,3 script.pl
+  $ perl -MException::Died=:debug script.pl
 
   # Debugging one-liner script
-  $ perl -MException::Died=%SIG,die,verbosity,3 -ale '\
+  $ perl -MException::Died=:debug -ale '\
   use File::Temp; $tmp = File::Temp->new( DIR => "/notfound" )'
 
 =head1 DESCRIPTION
@@ -60,39 +60,156 @@ L<perlfunc/die>.
 
 =cut
 
-
 use 5.006;
+
 use strict;
 use warnings;
 
-our $VERSION = 0.05;
+our $VERSION = '0.06';
 
 use constant::boolean;
 
 
-# Extend Exception::Base class
-use Exception::Base 0.21 (
-    'Exception::Died' => {
-        has               => { ro => [ 'catch_can_rebless', 'eval_error' ] },
-        string_attributes => [ 'message', 'eval_error' ],
-        default_attribute => 'eval_error',
-        eval_attribute    => 'eval_error',
-    },
-    '+ignore_package' => [ 'Carp' ],
-);
+=head1 INHERITANCE
 
+=over 2
+
+=item *
+
+extends L<Exception::Base>
+
+=back
+
+=cut
+
+# Extend Exception::Base class
+BEGIN {
+
+=head1 CONSTANTS
+
+=over
+
+=item ATTRS : HashRef
+
+Declaration of class attributes as reference to hash.
+
+See L<Exception::Base> for details.
+
+=back
+
+=head1 ATTRIBUTES
+
+This class provides new attributes.  See L<Exception::Base> for other
+descriptions.
+
+=over
+
+=cut
+
+    my %ATTRS = ();
+    my @ATTRS_RO = ();
+
+=item eval_error : Str {ro}
+
+Contains the message from failed C<eval> block.  This attribute is
+automatically filled on object creation.
+
+  use Exception::Died '%SIG';
+  eval { die "string" };
+  print $@->eval_error;  # "string"
+
+=cut
+
+    push @ATTRS_RO, 'eval_error';
+
+=item catch_can_rebless : Str {ro}
+
+Contains the flag for C<catch> method which marks that this exception
+object should be reblessed.  The flag is marked by internal C<__DIE__>
+hook.
+
+=cut
+
+    push @ATTRS_RO, 'catch_can_rebless';
+
+=item eval_attribute : Str = "eval_error"
+
+Meta-attribute contains the name of the attribute which is filled if
+error stack is empty.  This attribute will contain value of C<$@>
+variable.  This class overrides the default value from
+L<Exception::Base> class.
+
+=cut
+
+    $ATTRS{eval_attribute}    = 'eval_error';
+
+=item string_attributes : ArrayRef[Str] = ["message", "eval_error"]
+
+Meta-attribute contains the format of string representation of exception
+object.  This class overrides the default value from L<Exception::Base>
+class.
+
+=cut
+
+    $ATTRS{string_attributes} = [ 'message', 'eval_error' ];
+
+=item default_attribute : Str = "eval_error"
+
+Meta-attribute contains the name of the default attribute.  This class
+overrides the default value from L<Exception::Base> class.
+
+=back
+
+=cut
+
+    $ATTRS{default_attribute} = 'eval_error';
+
+    use Exception::Base 0.21;
+    Exception::Base->import(
+        'Exception::Died' => {
+            has   => { ro => \@ATTRS_RO },
+            %ATTRS,
+        },
+        '+ignore_package' => [ 'Carp' ],
+    );
+};
+
+
+## no critic RequireArgUnpacking
+## no critic RequireCarping
+## no critic RequireInitializationForLocalVars
+
+=head1 IMPORTS
+
+=over
+
+=item use Exception::Died '%SIG';
+
+=item use Exception::Died '%SIG' => 'die';
+
+Changes C<$SIG{__DIE__}> hook to C<Exception::Died::__DIE__>.
+
+=item use Exception::Died ':debug';
+
+Changes C<$SIG{__DIE__}> hook and sets verbosity level to 4 (maximum).
+
+=cut
 
 # Handle %SIG tag
 sub import {
-    my $pkg = shift;
+    my ($pkg, @args) = @_;
 
     my @params;
 
-    while (defined $_[0]) {
-        my $name = shift @_;
+    while (defined $args[0]) {
+        my $name = shift @args;
+        if ($name eq ':debug') {
+            $name = '%SIG';
+            @args = ('die', 'verbosity', 4, @args);
+        };
         if ($name eq '%SIG') {
-            if (defined $_[0] and $_[0] eq 'die') {
-                shift @_;
+            if (defined $args[0] and $args[0] eq 'die') {
+                shift @args;
             }
             # Handle die hook
             $SIG{__DIE__} = \&__DIE__;
@@ -100,7 +217,7 @@ sub import {
         else {
             # Other parameters goes to SUPER::import
             push @params, $name;
-            push @params, shift @_ if defined $_[0] and ref $_[0] eq 'HASH';
+            push @params, shift @args if defined $args[0] and ref $args[0] eq 'HASH';
         };
     };
 
@@ -111,6 +228,14 @@ sub import {
     return TRUE;
 };
 
+
+=item no Exception::Died '%SIG';
+
+Undefines C<$SIG{__DIE__}> hook.
+
+=back
+
+=cut
 
 # Reset %SIG
 sub unimport {
@@ -128,6 +253,40 @@ sub unimport {
 };
 
 
+=head1 CONSTRUCTORS
+
+=over
+
+=item catch(I<>) : Self|$@
+
+This method overwrites the default C<catch> constructor.  It works as method
+from base class and has one exception in its behavior.
+
+  my $e = CLASS->catch;
+
+If the popped value is an C<Exception::Died> object and has an attribute
+C<catch_can_rebless> set, this object is reblessed to class I<$class> with its
+attributes unchanged.  It is because original L<Exception::Base>-E<gt>C<catch>
+method doesn't change exception class but it should be changed if
+C<Exception::Died> handles C<$SIG{__DIE__}> hook.
+
+  use Exception::Base
+    'Exception::Fatal'  => { isa => 'Exception::Died' },
+    'Exception::Simple' => { isa => 'Exception::Died' };
+  use Exception::Died '%SIG' => 'die';
+
+  eval { die "Died\n"; };
+  my $e = Exception::Fatal->catch;
+  print ref $e;   # "Exception::Fatal"
+
+  eval { Exception::Simple->throw; };
+  my $e = Exception::Fatal->catch;
+  print ref $e;   # "Exception::Simple"
+
+=back
+
+=cut
+
 # Rebless Exception::Died into another exception class
 sub catch {
     my $self = shift;
@@ -141,12 +300,27 @@ sub catch {
         and ref $e ne $class and $e->{catch_can_rebless})
     {
         bless $e => $class;
-#        $e->{catch_can_rebless} = FALSE;
     };
 
     return $e;
 };
 
+
+=head1 METHODS
+
+=over
+
+=item _collect_system_data(I<>) : Self
+
+Collect system data and fill the attributes of exception object.  This method
+is called automatically if exception if thrown.  This class overrides the
+method from L<Exception::Base> class.
+
+See L<Exception::Base>.
+
+=back
+
+=cut
 
 # Collect system data
 sub _collect_system_data {
@@ -169,6 +343,28 @@ sub _collect_system_data {
     return $self->SUPER::_collect_system_data(@_);
 };
 
+
+=head1 FUNCTIONS
+
+=over
+
+=item __DIE__()
+
+This is a hook function for $SIG{__DIE__}.  This hook can be enabled with pragma:
+
+  use Exception::Died '%SIG';
+
+or manually, i.e. for local scope:
+
+  {
+      local $SIG{__DIE__};
+      Exception::Died->import('%SIG');
+      # ...
+  };
+
+=back
+
+=cut
 
 # Die hook
 sub __DIE__ {
@@ -194,8 +390,6 @@ sub __DIE__ {
 1;
 
 
-__END__
-
 =begin umlwiki
 
 = Class Diagram =
@@ -217,153 +411,6 @@ __END__
 [Exception::Died] ---|> [Exception::Base]
 
 =end umlwiki
-
-=head1 BASE CLASSES
-
-=over
-
-=item *
-
-L<Exception::Base>
-
-=back
-
-=head1 IMPORTS
-
-=over
-
-=item use Exception::Died '%SIG';
-
-=item use Exception::Died '%SIG' => 'die';
-
-Changes C<$SIG{__DIE__}> hook to C<Exception::Died::__DIE__>.
-
-=item no Exception::Died '%SIG';
-
-Undefines C<$SIG{__DIE__}> hook.
-
-=back
-
-=head1 CONSTANTS
-
-=over
-
-=item ATTRS : HashRef
-
-Declaration of class attributes as reference to hash.
-
-See L<Exception::Base> for details.
-
-=back
-
-=head1 ATTRIBUTES
-
-This class provides new attributes.  See L<Exception::Base> for other
-descriptions.
-
-=over
-
-=item eval_error : Str {ro}
-
-Contains the message from failed C<eval> block.  This attribute is
-automatically filled on object creation.
-
-  use Exception::Died '%SIG';
-  eval { die "string" };
-  print $@->eval_error;  # "string"
-
-=item catch_can_rebless : Str {rw}
-
-Contains the flag for C<catch> method which marks that this exception
-object should be reblessed.  The flag is marked by internal C<__DIE__>
-hook.
-
-=item eval_attribute : Str = "eval_error"
-
-Meta-attribute contains the name of the attribute which is filled if
-error stack is empty.  This attribute will contain value of C<$@>
-variable.  This class overrides the default value from
-L<Exception::Base> class.
-
-=item stringify_attributes : ArrayRef[Str] = ["message", "eval_error"]
-
-Meta-attribute contains the format of string representation of exception
-object.  This class overrides the default value from L<Exception::Base>
-class.
-
-=item default_attribute : Str = "eval_error"
-
-Meta-attribute contains the name of the default attribute.  This class
-overrides the default value from L<Exception::Base> class.
-
-=back
-
-=head1 CONSTRUCTORS
-
-=over
-
-=item catch(I<>) : Self|$@
-
-This method overwrites the default C<catch> constructor.  It works as method
-from base class and has one exception in its behaviour.
-
-  my $e = CLASS->catch;
-
-If the popped value is an C<Exception::Died> object and has an attribute
-C<catch_can_rebless> set, this object is reblessed to class I<$class> with its
-attributes unchanged.  It is because original L<Exception::Base>-E<gt>C<catch>
-method doesn't change exception class but it should be changed if
-C<Exception::Died> handles C<$SIG{__DIE__}> hook.
-
-  use Exception::Base
-    'Exception::Fatal'  => { isa => 'Exception::Died' },
-    'Exception::Simple' => { isa => 'Exception::Died' };
-  use Exception::Died '%SIG' => 'die';
-
-  eval { die "Died\n"; };
-  my $e = Exception::Fatal->catch;
-  print ref $e;   # "Exception::Fatal"
-
-  eval { Exception::Simple->throw; };
-  my $e = Exception::Fatal->catch;
-  print ref $e;   # "Exception::Simple"
-
-
-=back
-
-=head1 PRIVATE METHODS
-
-=over
-
-=item _collect_system_data(I<>) : Self
-
-Collect system data and fill the attributes of exception object.  This method
-is called automatically if exception if thrown.  This class overrides the
-method from L<Exception::Base> class.
-
-See L<Exception::Base>.
-
-=back
-
-=head1 PRIVATE FUNCTIONS
-
-=over
-
-=item __DIE__()
-
-This is a hook function for $SIG{__DIE__}.  This hook can be enabled with pragma:
-
-  use Exception::Died '%SIG';
-
-or manually, i.e. for local scope:
-
-  {
-      local $SIG{__DIE__};
-      Exception::Died->import('%SIG');
-      # ...
-  };
-
-=back
 
 =head1 PERFORMANCE
 
@@ -406,11 +453,11 @@ If you find the bug, please report it.
 
 =head1 AUTHOR
 
-Piotr Roszatycki E<lt>dexter@debian.orgE<gt>
+Piotr Roszatycki <dexter@cpan.org>
 
 =head1 LICENSE
 
-Copyright (C) 2008, 2009 by Piotr Roszatycki E<lt>dexter@debian.orgE<gt>.
+Copyright (c) 2008, 2009 by Piotr Roszatycki <dexter@cpan.org>.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

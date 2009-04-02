@@ -1,7 +1,6 @@
 # local defaults for perlcritic
 severity = 3
 verbose = 4
-exclude = RequireArgUnpacking RequireCarping RequireInitializationForLocalVars
 
 [ControlStructures::ProhibitCascadingIfElse]
 max_elsif = 5

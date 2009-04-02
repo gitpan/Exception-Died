@@ -1,4 +1,15 @@
 ------------------------------------------------------------------------
+0.06 | Piotr Roszatycki <dexter@cpan.org> | 2009-04-02
+
+New:
+
+* use Exception::Died ':debug' sets %SIG hook and verbosity level to 4. 
+
+Changes:
+
+* POD is mixed with the rest of code.
+
+------------------------------------------------------------------------
 0.05 | Piotr Roszatycki <dexter@debian.org> | 2009-01-01
 
 Changes:
